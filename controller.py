@@ -12,10 +12,21 @@ class MacLearningController(Thread):
     def __init__(self, sw, start_wait=0.3):
         super(MacLearningController, self).__init__()
         self.sw = sw
-        self.start_wait = start_wait # time to wait for the controller to be listenning
+        self.start_wait = start_wait # time to wait for the controller to be listening
         self.iface = sw.intfs[1].name
+        self.mac_for_ip = {}
         self.port_for_mac = {}
         self.stop_event = Event()
+
+    def addIpAddr(self, ip, mac):
+        # Don't re-add the ip-mac mapping if we already have it:
+        if ip in self.mac_for_ip: return
+
+        self.sw.insertTableEntry(table_name='MyIngress.arp_table',
+                match_fields={'next_hop_ip': [ip]},
+                action_name='MyIngress.find_next_hop_mac',
+                action_params={'dstAddr': mac})
+        self.mac_for_ip[ip] = mac 
 
     def addMacAddr(self, mac, port):
         # Don't re-add the mac-port mapping if we already have it:
@@ -28,16 +39,19 @@ class MacLearningController(Thread):
         self.port_for_mac[mac] = port
 
     def handleArpReply(self, pkt):
+        self.addIpAddr(pkt[ARP].psrc, pkt[ARP].hwsrc)
         self.addMacAddr(pkt[ARP].hwsrc, pkt[CPUMetadata].srcPort)
         self.send(pkt)
 
     def handleArpRequest(self, pkt):
+        self.addIpAddr(pkt[ARP].psrc, pkt[ARP].hwsrc)
         self.addMacAddr(pkt[ARP].hwsrc, pkt[CPUMetadata].srcPort)
         self.send(pkt)
 
     def handlePkt(self, pkt):
         #pkt.show2()
         assert CPUMetadata in pkt, "Should only receive packets from switch with special header"
+        #print(self.sw.readCounter(counter_name='MyIngress.packet_counter', index=1))
 
         # Ignore packets that the CPU sends:
         if pkt[CPUMetadata].fromCpu == 1: return
