@@ -192,7 +192,7 @@ control MyIngress(inout headers hdr,
         default_action = NoAction;
     }
 
-    table arp_table {
+    table cam_table {
         key = { next_hop_ip: exact; }
         actions = { find_next_hop_mac; send_to_cpu; drop; NoAction; }
         size = 64;
@@ -226,7 +226,7 @@ control MyIngress(inout headers hdr,
 
                 // calculate next hop information
                 ipv4_routing.apply();
-                arp_table.apply();
+                cam_table.apply();
 
                 // verify checksum
                 if (standard_metadata.checksum_error == 1)

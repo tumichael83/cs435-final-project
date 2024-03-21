@@ -22,7 +22,7 @@ class MacLearningController(Thread):
         # Don't re-add the ip-mac mapping if we already have it:
         if ip in self.mac_for_ip: return
 
-        self.sw.insertTableEntry(table_name='MyIngress.arp_table',
+        self.sw.insertTableEntry(table_name='MyIngress.cam_table',
                 match_fields={'next_hop_ip': [ip]},
                 action_name='MyIngress.find_next_hop_mac',
                 action_params={'dstAddr': mac})
